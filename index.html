@@ -111,18 +111,18 @@
         </div>
 
         <div class="flex items-center space-x-2 md:space-x-3 pointer-events-auto">
+            <button id="playPauseBtn" class="glass-panel px-4 py-2.5 rounded-xl hover:border-amber-400 text-xs font-semibold flex items-center space-x-2 text-amber-300 interactive-btn bg-amber-500/10 border-amber-500/40">
+                <svg id="playPauseIcon" class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path id="playPauseSvgPath" d="M6 4l15 8-15 8V4z"></path>
+                </svg>
+                <span id="playPauseLabel">Play Cinematic</span>
+            </button>
+
             <button id="voiceToggle" class="glass-panel px-3.5 py-2.5 rounded-xl hover:border-amber-400 text-xs font-semibold flex items-center space-x-2 text-slate-200 interactive-btn">
                 <svg id="voiceIcon" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
                 </svg>
                 <span id="voiceLabel" class="hidden sm:inline">Voice On</span>
-            </button>
-
-            <button id="autoAdvanceToggle" class="glass-panel px-3.5 py-2.5 rounded-xl hover:border-amber-400 text-xs font-semibold flex items-center space-x-2 text-slate-200 interactive-btn" title="Automatically advance to next scene when narration completes">
-                <svg id="autoAdvanceIcon" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
-                </svg>
-                <span id="autoAdvanceLabel" class="hidden sm:inline">Auto-Advance</span>
             </button>
 
             <button id="audioToggle" class="glass-panel px-3.5 py-2.5 rounded-xl hover:border-amber-400 text-xs font-semibold flex items-center space-x-2 text-slate-200 interactive-btn">
@@ -227,17 +227,21 @@
         window.addEventListener('resize', updateMaxScroll);
 
         window.addEventListener('scroll', () => {
-            targetScroll = window.scrollY;
+            if (!isCinematicPlaying) {
+                targetScroll = window.scrollY;
+            }
         }, { passive: true });
 
         let isVoiceEnabled = true;
-        let isAutoAdvanceEnabled = true;
+        let isCinematicPlaying = false;
         let currentSceneIndex = -1;
         let lastTriggeredScene = -1;
         let isSpeaking = false;
 
         const narrationBadge = document.getElementById('narrationBadge');
         const narrationStatusText = document.getElementById('narrationStatusText');
+        const playPauseSvgPath = document.getElementById('playPauseSvgPath');
+        const playPauseLabel = document.getElementById('playPauseLabel');
 
         function scrollToSceneIndex(index, duration = 1600) {
             const targetY = (index / (SCENE_DATA.length - 1)) * maxScroll;
@@ -250,6 +254,7 @@
                 const progress = Math.min(elapsed / duration, 1);
                 const ease = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
                 window.scrollTo(0, startY + distance * ease);
+                targetScroll = window.scrollY;
                 if (progress < 1) {
                     requestAnimationFrame(step);
                 }
@@ -284,10 +289,13 @@
             utterance.onend = () => {
                 isSpeaking = false;
                 narrationBadge.classList.add('hidden');
-                if (isAutoAdvanceEnabled && currentSceneIndex === index && index < SCENE_DATA.length - 1) {
+                if (isCinematicPlaying && currentSceneIndex === index && index < SCENE_DATA.length - 1) {
                     setTimeout(() => {
                         scrollToSceneIndex(index + 1);
-                    }, 600);
+                    }, 800);
+                } else if (isCinematicPlaying && index === SCENE_DATA.length - 1) {
+                    // Stop playback at the end
+                    toggleCinematicPlay();
                 }
             };
 
@@ -299,7 +307,29 @@
             window.speechSynthesis.speak(utterance);
         }
 
-        // Event Listeners with zero-delay handlers
+        function toggleCinematicPlay() {
+            isCinematicPlaying = !isCinematicPlaying;
+            if (isCinematicPlaying) {
+                playPauseSvgPath.setAttribute('d', 'M6 5h4v14H6zm8 0h4v14h-4z'); // Pause symbol (⏸)
+                playPauseLabel.textContent = "Pause Cinematic";
+                // If currently at the end, restart from 0
+                if (window.scrollY >= maxScroll - 50) {
+                    scrollToSceneIndex(0);
+                }
+                if (isVoiceEnabled && currentSceneIndex >= 0) {
+                    speakSceneNarration(currentSceneIndex, true);
+                }
+            } else {
+                playPauseSvgPath.setAttribute('d', 'M6 4l15 8-15 8V4z'); // Play symbol (▶)
+                playPauseLabel.textContent = "Play Cinematic";
+            }
+        }
+
+        document.getElementById('playPauseBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleCinematicPlay();
+        });
+
         document.getElementById('voiceToggle').addEventListener('click', (e) => {
             e.stopPropagation();
             isVoiceEnabled = !isVoiceEnabled;
@@ -312,13 +342,6 @@
             } else if (currentSceneIndex >= 0) {
                 speakSceneNarration(currentSceneIndex, true);
             }
-        });
-
-        document.getElementById('autoAdvanceToggle').addEventListener('click', (e) => {
-            e.stopPropagation();
-            isAutoAdvanceEnabled = !isAutoAdvanceEnabled;
-            document.getElementById('autoAdvanceLabel').textContent = isAutoAdvanceEnabled ? "Auto-Advance" : "Manual Scroll";
-            document.getElementById('autoAdvanceIcon').style.color = isAutoAdvanceEnabled ? "#10b981" : "#64748b";
         });
 
         document.getElementById('replayBtn').addEventListener('click', (e) => {
@@ -828,7 +851,13 @@
             const dt = (time - lastTime) * 0.001;
             lastTime = time;
 
-            currentScroll += (targetScroll - currentScroll) * 0.06;
+            if (isCinematicPlaying) {
+                targetScroll += dt * 140; // auto advance speed
+                if (targetScroll > maxScroll) targetScroll = maxScroll;
+                window.scrollTo(0, targetScroll);
+            }
+
+            currentScroll += (targetScroll - currentScroll) * 0.08;
 
             const globalProgress = Math.max(0, Math.min(1, currentScroll / (maxScroll || 1)));
             const scaledProgress = globalProgress * SCENE_DATA.length;
@@ -838,7 +867,6 @@
 
             currentSceneIndex = sceneIdx;
 
-            // Trigger narration and audio updates ONLY when scene index changes
             if (sceneIdx !== lastTriggeredScene) {
                 lastTriggeredScene = sceneIdx;
                 if (isVoiceEnabled) {
