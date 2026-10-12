@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GENESIS: Cinematic Chronicles</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        serif: ['Cinzel', 'Playfair Display', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #masterCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #scrollTrack {
+            height: 15600vh;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.92);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85);
+        }
+
+        .interactive-btn {
+            cursor: pointer;
+            pointer-events: auto;
+            transition: transform 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+            will-change: transform;
+        }
+        .interactive-btn:hover {
+            transform: scale(1.03);
+        }
+        .interactive-btn:active {
+            transform: scale(0.97);
+        }
+
+        .audio-wave-bar {
+            animation: soundWave 1.2s ease-in-out infinite alternate;
+        }
+        @keyframes soundWave {
+            0% { height: 4px; }
+            100% { height: 16px; }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #d97706; border-radius: 3px; }
+    </style>
+</head>
+<body class="selection:bg-amber-500 selection:text-black">
+
+    <canvas id="masterCanvas"></canvas>
+    <div id="scrollTrack"></div>
+
+    <header class="fixed top-0 left-0 w-full z-30 pointer-events-none flex flex-wrap justify-between items-center p-4 md:p-6 gap-3">
+        <div class="flex items-center space-x-3 pointer-events-auto">
+            <button id="drawerToggle" class="glass-panel p-3 rounded-xl hover:border-amber-400 text-amber-400 focus:outline-none interactive-btn" title="Open Chapter List">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+            <div>
+                <span class="text-[10px] uppercase tracking-[0.3em] text-amber-400/90 font-bold block">Scripture Chronicles</span>
+                <h1 class="text-base md:text-xl font-serif font-bold tracking-wider text-white">GENESIS</h1>
+            </div>
+        </div>
+
+        <div id="narrationBadge" class="glass-panel px-4 py-2 rounded-full hidden md:flex items-center space-x-3 border-amber-500/40 pointer-events-auto">
+            <div class="flex items-end space-x-1 h-4">
+                <span class="w-1 bg-amber-400 rounded-full audio-wave-bar" style="animation-delay: 0.1s"></span>
+                <span class="w-1 bg-amber-400 rounded-full audio-wave-bar" style="animation-delay: 0.3s"></span>
+                <span class="w-1 bg-amber-400 rounded-full audio-wave-bar" style="animation-delay: 0.2s"></span>
+            </div>
+            <span id="narrationStatusText" class="text-xs font-semibold text-amber-300">Narrating Scene 1 of 13...</span>
+        </div>
+
+        <div class="flex items-center space-x-2 md:space-x-3 pointer-events-auto">
+            <button id="voiceToggle" class="glass-panel px-3.5 py-2.5 rounded-xl hover:border-amber-400 text-xs font-semibold flex items-center space-x-2 text-slate-200 interactive-btn">
+                <svg id="voiceIcon" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                </svg>
+                <span id="voiceLabel" class="hidden sm:inline">Voice On</span>
+            </button>
+
+            <button id="autoAdvanceToggle" class="glass-panel px-3.5 py-2.5 rounded-xl hover:border-amber-400 text-xs font-semibold flex items-center space-x-2 text-slate-200 interactive-btn" title="Automatically advance to next scene when narration completes">
+                <svg id="autoAdvanceIcon" class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path>
+                </svg>
+                <span id="autoAdvanceLabel" class="hidden sm:inline">Auto-Advance</span>
+            </button>
+
+            <button id="audioToggle" class="glass-panel px-3.5 py-2.5 rounded-xl hover:border-amber-400 text-xs font-semibold flex items-center space-x-2 text-slate-200 interactive-btn">
+                <svg id="audioIcon" class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"></path>
+                </svg>
+                <span id="audioLabel" class="hidden sm:inline">Music On</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="fixed bottom-6 left-0 w-full z-30 pointer-events-none px-4 md:px-8 flex flex-col md:flex-row justify-between items-end gap-4">
+        <div class="glass-panel p-5 md:p-6 rounded-2xl max-w-2xl transition-all duration-300 w-full md:w-auto pointer-events-auto">
+            <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-3">
+                    <span id="sceneBadge" class="text-[10px] font-bold tracking-widest px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">ACT I • SCENE 01</span>
+                    <span id="sceneScripture" class="text-xs text-amber-400/90 font-serif italic">Genesis 1:1-3</span>
+                </div>
+                <button id="replayBtn" class="text-amber-400 hover:text-amber-300 p-1 rounded-lg hover:bg-amber-500/10 flex items-center space-x-1 text-xs interactive-btn" title="Replay Scene Narration">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span class="hidden sm:inline">Replay Voice</span>
+                </button>
+            </div>
+            <h2 id="sceneTitle" class="text-xl md:text-3xl font-serif font-bold text-white mb-2 tracking-wide">The Creation of Light</h2>
+            <p id="sceneDesc" class="text-xs md:text-sm text-slate-300 leading-relaxed font-light min-h-[3rem]">In the beginning, darkness was over the surface of the deep. Then God said, "Let there be light," and radiant light burst into existence.</p>
+        </div>
+
+        <div class="hidden md:flex flex-col items-end space-y-3 mb-1 pointer-events-auto">
+            <div id="dotNav" class="flex items-center space-x-1.5 glass-panel px-3 py-2 rounded-full"></div>
+            <div class="flex items-center space-x-2">
+                <div class="text-xs font-mono font-bold text-amber-400" id="progressVal">0%</div>
+                <div class="w-40 h-2 bg-slate-900/90 rounded-full overflow-hidden border border-amber-500/20 p-0.5">
+                    <div id="progressBar" class="h-full bg-gradient-to-r from-amber-600 via-amber-400 to-yellow-200 rounded-full w-0 transition-all duration-75"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="drawerOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-md z-40 opacity-0 pointer-events-none transition-opacity duration-300"></div>
+    <div id="navDrawer" class="fixed top-0 left-0 h-full w-80 md:w-96 glass-panel z-50 transform -translate-x-full transition-transform duration-300 flex flex-col p-6 overflow-y-auto pointer-events-auto">
+        <div class="flex justify-between items-center mb-6 pb-4 border-b border-amber-500/20">
+            <div>
+                <h3 class="font-serif font-bold text-lg text-amber-400">GENESIS CHRONICLES</h3>
+                <p class="text-xs text-slate-400">Select any chapter to warp</p>
+            </div>
+            <button id="drawerClose" class="text-slate-400 hover:text-white p-2 interactive-btn">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="sceneList" class="space-y-2 flex-1"></div>
+    </div>
+
+    <script>
+        const SCENE_DATA = [
+            { id: 1, title: "The Creation of Light", scripture: "Genesis 1:3", desc: "In the beginning, darkness was over the surface of the deep. Then God said, 'Let there be light,' and radiant light burst into existence." },
+            { id: 2, title: "Living Creation", scripture: "Genesis 1:11-25", desc: "The oceans receded to reveal fertile brown soil. Green plants and majestic forests sprouted as birds soared, animals roamed, and sea creatures swam." },
+            { id: 3, title: "Sun, Moon, and Stars", scripture: "Genesis 1:16", desc: "Two great lights were placed in the vault of heaven: the radiant Sun to rule the day, and the luminous Moon with stars to govern the night." },
+            { id: 4, title: "The Seventh Day Rest", scripture: "Genesis 2:2-3", desc: "By the seventh day, the creation of heaven and earth was completed. God blessed the seventh day and rested from all the work He had done." },
+            { id: 5, title: "The Eden Temptation", scripture: "Genesis 3:6-8", desc: "After yielding to temptation in the Garden, two figures in loincloths heard the sound of God walking in the cool of the day and hid amongst the trees." },
+            { id: 6, title: "Cain and Abel", scripture: "Genesis 4:8", desc: "In an open field, Cain allowed jealousy to consume him. He rose up against his righteous brother Abel and struck him down." },
+            { id: 7, title: "Building Noah's Ark", scripture: "Genesis 6:14-22", desc: "In obedience to divine command, Noah constructed a massive timber Ark with scaffolding. Animals marched up the wooden ramp two by two." },
+            { id: 8, title: "The Great Deluge", scripture: "Genesis 7:17-24", desc: "The floodgates of heaven opened and heavy rain poured for forty days. Powerful ocean surges lifted Noah's Ark high above the inundated earth." },
+            { id: 9, title: "The Tower of Babel", scripture: "Genesis 11:4-9", desc: "Humankind built a grand city with a towering ziggurat reaching toward the sky. God confused their language and crumbled the tower, scattering the people." },
+            { id: 10, title: "The Stand in Sodom", scripture: "Genesis 19:4-9", desc: "Surrounded by a wicked mob bearing knives outside his house, Lot stood at the doorway with hands raised shouting 'STOP!' to protect his angelic guests." },
+            { id: 11, title: "Pillar of Salt", scripture: "Genesis 19:24-26", desc: "Fiery sulfur and meteors rained down upon Sodom. As they fled, Lot's wife looked back toward the burning city and turned into a pillar of white salt." },
+            { id: 12, title: "Joseph Sold into Slavery", scripture: "Genesis 37:24-28", desc: "Cast into a dark dry stone pit by his brothers, Joseph looked up in anguish before being pulled out and sold into slavery to traveling Ishmaelite merchants." },
+            { id: 13, title: "Joseph in Pharaoh's Court", scripture: "Genesis 41:39-44", desc: "Elevated from prison for interpreting dreams, Joseph stood alongside Pharaoh in his golden palace, appointed ruler over all the land of Egypt." }
+        ];
+
+        const canvas = document.getElementById('masterCanvas');
+        const ctx = canvas.getContext('2d');
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+        let dpr = window.devicePixelRatio || 1;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            ctx.resetTransform();
+            ctx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        let targetScroll = 0;
+        let currentScroll = 0;
+        let maxScroll = 1;
+
+        function updateMaxScroll() {
+            maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+        }
+        window.addEventListener('load', updateMaxScroll);
+        window.addEventListener('resize', updateMaxScroll);
+
+        window.addEventListener('scroll', () => {
+            targetScroll = window.scrollY;
+        }, { passive: true });
+
+        let isVoiceEnabled = true;
+        let isAutoAdvanceEnabled = true;
+        let currentSceneIndex = -1;
+        let lastTriggeredScene = -1;
+        let isSpeaking = false;
+
+        const narrationBadge = document.getElementById('narrationBadge');
+        const narrationStatusText = document.getElementById('narrationStatusText');
+
+        function scrollToSceneIndex(index, duration = 1600) {
+            const targetY = (index / (SCENE_DATA.length - 1)) * maxScroll;
+            const startY = window.scrollY;
+            const distance = targetY - startY;
+            const startTime = performance.now();
+
+            function step(currentTime) {
+                const elapsed = currentTime - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const ease = progress < 0.5 ? 2 * progress * progress : -1 + (4 - 2 * progress) * progress;
+                window.scrollTo(0, startY + distance * ease);
+                if (progress < 1) {
+                    requestAnimationFrame(step);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function speakSceneNarration(index, forceReplay = false) {
+            if (!isVoiceEnabled || !('speechSynthesis' in window)) return;
+            if (currentSceneIndex === index && !forceReplay && isSpeaking) return;
+
+            window.speechSynthesis.cancel();
+
+            const scene = SCENE_DATA[index];
+            if (!scene) return;
+
+            const utterance = new SpeechSynthesisUtterance(`${scene.title}. ${scene.desc}`);
+            utterance.rate = 0.92;
+            utterance.pitch = 0.95;
+            utterance.volume = 1.0;
+
+            const voices = window.speechSynthesis.getVoices();
+            const naturalVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Daniel') || v.name.includes('Samantha')));
+            if (naturalVoice) utterance.voice = naturalVoice;
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                narrationBadge.classList.remove('hidden');
+                narrationStatusText.textContent = `Narrating Scene ${index + 1} of ${SCENE_DATA.length}...`;
+            };
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                narrationBadge.classList.add('hidden');
+                if (isAutoAdvanceEnabled && currentSceneIndex === index && index < SCENE_DATA.length - 1) {
+                    setTimeout(() => {
+                        scrollToSceneIndex(index + 1);
+                    }, 600);
+                }
+            };
+
+            utterance.onerror = () => {
+                isSpeaking = false;
+                narrationBadge.classList.add('hidden');
+            };
+
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Event Listeners with zero-delay handlers
+        document.getElementById('voiceToggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            isVoiceEnabled = !isVoiceEnabled;
+            document.getElementById('voiceLabel').textContent = isVoiceEnabled ? "Voice On" : "Voice Off";
+            document.getElementById('voiceIcon').style.color = isVoiceEnabled ? "#f59e0b" : "#64748b";
+            if (!isVoiceEnabled) {
+                window.speechSynthesis.cancel();
+                isSpeaking = false;
+                narrationBadge.classList.add('hidden');
+            } else if (currentSceneIndex >= 0) {
+                speakSceneNarration(currentSceneIndex, true);
+            }
+        });
+
+        document.getElementById('autoAdvanceToggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            isAutoAdvanceEnabled = !isAutoAdvanceEnabled;
+            document.getElementById('autoAdvanceLabel').textContent = isAutoAdvanceEnabled ? "Auto-Advance" : "Manual Scroll";
+            document.getElementById('autoAdvanceIcon').style.color = isAutoAdvanceEnabled ? "#10b981" : "#64748b";
+        });
+
+        document.getElementById('replayBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (currentSceneIndex >= 0) speakSceneNarration(currentSceneIndex, true);
+        });
+
+        let audioCtx = null;
+        let isAudioPlaying = false;
+        let masterGain, bassOsc, padOsc1, padOsc2, filterNode;
+
+        function initAudio() {
+            if (audioCtx) return;
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContext();
+
+            masterGain = audioCtx.createGain();
+            masterGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            masterGain.connect(audioCtx.destination);
+
+            filterNode = audioCtx.createBiquadFilter();
+            filterNode.type = 'lowpass';
+            filterNode.frequency.setValueAtTime(260, audioCtx.currentTime);
+            filterNode.connect(masterGain);
+
+            bassOsc = audioCtx.createOscillator();
+            bassOsc.type = 'sine';
+            bassOsc.frequency.setValueAtTime(55, audioCtx.currentTime);
+
+            padOsc1 = audioCtx.createOscillator();
+            padOsc1.type = 'sine';
+            padOsc1.frequency.setValueAtTime(82.41, audioCtx.currentTime);
+
+            padOsc2 = audioCtx.createOscillator();
+            padOsc2.type = 'triangle';
+            padOsc2.frequency.setValueAtTime(110, audioCtx.currentTime);
+
+            const padGain1 = audioCtx.createGain();
+            padGain1.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            const padGain2 = audioCtx.createGain();
+            padGain2.gain.setValueAtTime(0.15, audioCtx.currentTime);
+
+            bassOsc.connect(filterNode);
+            padOsc1.connect(padGain1);
+            padGain1.connect(filterNode);
+            padOsc2.connect(padGain2);
+            padGain2.connect(filterNode);
+
+            bassOsc.start();
+            padOsc1.start();
+            padOsc2.start();
+        }
+
+        function updateAudioPitch(sceneIndex) {
+            if (!audioCtx || !isAudioPlaying) return;
+            const roots = [55.0, 65.41, 73.42, 82.41, 65.41, 55.0, 73.42, 55.0, 82.41, 65.41, 55.0, 73.42, 82.41];
+            const root = roots[sceneIndex % roots.length];
+            const now = audioCtx.currentTime;
+            bassOsc.frequency.setTargetAtTime(root, now, 1.5);
+            padOsc1.frequency.setTargetAtTime(root * 1.5, now, 1.5);
+            padOsc2.frequency.setTargetAtTime(root * 2.0, now, 1.5);
+        }
+
+        document.getElementById('audioToggle').addEventListener('click', (e) => {
+            e.stopPropagation();
+            initAudio();
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            isAudioPlaying = !isAudioPlaying;
+            document.getElementById('audioLabel').textContent = isAudioPlaying ? "Music On" : "Music Off";
+            document.getElementById('audioIcon').style.color = isAudioPlaying ? "#f59e0b" : "#64748b";
+            masterGain.gain.setTargetAtTime(isAudioPlaying ? 0.03 : 0, audioCtx.currentTime, 0.8);
+        });
+
+        const sceneList = document.getElementById('sceneList');
+        const dotNav = document.getElementById('dotNav');
+
+        SCENE_DATA.forEach((s, idx) => {
+            const btn = document.createElement('button');
+            btn.className = "w-full text-left p-3 rounded-xl border border-transparent hover:border-amber-500/30 hover:bg-slate-900/60 transition flex items-center space-x-3 group interactive-btn";
+            btn.innerHTML = `
+                <span class="text-xs font-mono font-bold text-amber-400 px-2 py-1 rounded bg-amber-500/10 border border-amber-500/20">${idx+1 < 10 ? '0'+(idx+1) : idx+1}</span>
+                <div>
+                    <div class="text-xs font-semibold text-white group-hover:text-amber-300">${s.title}</div>
+                    <div class="text-[10px] text-slate-400 font-serif italic">${s.scripture}</div>
+                </div>
+            `;
+            btn.onclick = (e) => {
+                e.stopPropagation();
+                scrollToSceneIndex(idx);
+                closeDrawer();
+            };
+            sceneList.appendChild(btn);
+
+            const dot = document.createElement('button');
+            dot.className = "w-2 h-2 rounded-full bg-slate-700 transition-all duration-300 hover:scale-125 interactive-btn";
+            dot.id = `dot-${idx}`;
+            dot.title = `${idx+1}. ${s.title}`;
+            dot.onclick = (e) => {
+                e.stopPropagation();
+                scrollToSceneIndex(idx);
+            };
+            dotNav.appendChild(dot);
+        });
+
+        function openDrawer() {
+            document.getElementById('navDrawer').classList.remove('-translate-x-full');
+            document.getElementById('drawerOverlay').classList.remove('opacity-0', 'pointer-events-none');
+        }
+        function closeDrawer() {
+            document.getElementById('navDrawer').classList.add('-translate-x-full');
+            document.getElementById('drawerOverlay').classList.add('opacity-0', 'pointer-events-none');
+        }
+        document.getElementById('drawerToggle').onclick = (e) => { e.stopPropagation(); openDrawer(); };
+        document.getElementById('drawerClose').onclick = (e) => { e.stopPropagation(); closeDrawer(); };
+        document.getElementById('drawerOverlay').onclick = closeDrawer;
+
+        const particles = Array.from({ length: 160 }, () => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            size: Math.random() * 2 + 0.5,
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5
+        }));
+
+        function drawHumanoid(x, y, scale, pose, color="#f1f5f9") {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+            ctx.fillStyle = color;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+
+            ctx.beginPath();
+            ctx.arc(0, -40, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.moveTo(0, -33);
+            ctx.lineTo(0, -15);
+            ctx.stroke();
+
+            if (pose === "run") {
+                ctx.beginPath();
+                ctx.moveTo(0, -15); ctx.lineTo(-12, 0);
+                ctx.moveTo(0, -15); ctx.lineTo(12, 0);
+                ctx.moveTo(0, -30); ctx.lineTo(-10, -20);
+                ctx.moveTo(0, -30); ctx.lineTo(10, -10);
+                ctx.stroke();
+            } else if (pose === "strike") {
+                ctx.beginPath();
+                ctx.moveTo(0, -15); ctx.lineTo(-8, 0);
+                ctx.moveTo(0, -15); ctx.lineTo(8, 0);
+                ctx.moveTo(0, -30); ctx.lineTo(-15, -45);
+                ctx.moveTo(0, -30); ctx.lineTo(10, -20);
+                ctx.stroke();
+            } else if (pose === "shout") {
+                ctx.beginPath();
+                ctx.moveTo(0, -15); ctx.lineTo(-8, 0);
+                ctx.moveTo(0, -15); ctx.lineTo(8, 0);
+                ctx.moveTo(0, -30); ctx.lineTo(-18, -40);
+                ctx.moveTo(0, -30); ctx.lineTo(18, -40);
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.moveTo(0, -15); ctx.lineTo(-5, 0);
+                ctx.moveTo(0, -15); ctx.lineTo(5, 0);
+                ctx.moveTo(0, -30); ctx.lineTo(-8, -15);
+                ctx.moveTo(0, -30); ctx.lineTo(8, -15);
+                ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function renderScene(sceneIdx, p, t) {
+            ctx.clearRect(0, 0, width, height);
+
+            switch(sceneIdx) {
+                case 0:
+                    ctx.fillStyle = "#020617";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.save();
+                    ctx.translate(width/2, height/2);
+                    for(let i=0; i<12; i++) {
+                        ctx.rotate((Math.PI * 2) / 12);
+                        let rayGrad = ctx.createLinearGradient(0, 0, width, 0);
+                        rayGrad.addColorStop(0, `rgba(251, 191, 36, ${0.85 * p})`);
+                        rayGrad.addColorStop(1, 'transparent');
+                        ctx.fillStyle = rayGrad;
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(width, -35);
+                        ctx.lineTo(width, 35);
+                        ctx.fill();
+                    }
+                    ctx.restore();
+
+                    ctx.save();
+                    let headGrad = ctx.createRadialGradient(width/2, height/2, 10, width/2, height/2, 130);
+                    headGrad.addColorStop(0, '#ffffff');
+                    headGrad.addColorStop(0.5, '#f59e0b');
+                    headGrad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = headGrad;
+                    ctx.beginPath();
+                    ctx.arc(width/2, height/2, 130 * Math.max(0.2, p), 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.font = "bold 34px 'Cinzel', serif";
+                    ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, p * 1.5)})`;
+                    ctx.textAlign = "center";
+                    ctx.shadowColor = "#f59e0b";
+                    ctx.shadowBlur = 25;
+                    ctx.fillText("LET THERE BE LIGHT", width/2, height/2 + 180);
+                    ctx.restore();
+                    break;
+
+                case 1:
+                    let s2Grad = ctx.createLinearGradient(0, 0, 0, height);
+                    s2Grad.addColorStop(0, '#0284c7');
+                    s2Grad.addColorStop(0.6, '#0369a1');
+                    s2Grad.addColorStop(1, '#0c4a6e');
+                    ctx.fillStyle = s2Grad;
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#78350f";
+                    ctx.beginPath();
+                    ctx.moveTo(0, height);
+                    ctx.quadraticCurveTo(width * 0.4, height * (0.95 - p * 0.3), width, height);
+                    ctx.fill();
+
+                    for(let i=0; i<9; i++) {
+                        let tx = width * (0.1 + i * 0.1);
+                        let ty = height * 0.72;
+                        ctx.fillStyle = "#059669";
+                        ctx.beginPath();
+                        ctx.arc(tx, ty - p * 30, 22 * p, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    ctx.strokeStyle = "#ffffff";
+                    ctx.lineWidth = 2;
+                    let wingY = Math.sin(t * 8) * 10;
+                    ctx.beginPath();
+                    ctx.moveTo(width * 0.3 + p * 150 - 15, height * 0.25 + wingY);
+                    ctx.lineTo(width * 0.3 + p * 150, height * 0.25);
+                    ctx.lineTo(width * 0.3 + p * 150 + 15, height * 0.25 + wingY);
+                    ctx.stroke();
+                    break;
+
+                case 2:
+                    ctx.fillStyle = "#030712";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.save();
+                    ctx.translate(width/2, height/2);
+
+                    let eGrad = ctx.createRadialGradient(-15, -15, 10, 0, 0, 75);
+                    eGrad.addColorStop(0, '#38bdf8');
+                    eGrad.addColorStop(0.7, '#1d4ed8');
+                    eGrad.addColorStop(1, '#020617');
+                    ctx.fillStyle = eGrad;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 75, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    let angle = p * Math.PI * 4;
+                    let sx = Math.cos(angle) * 250;
+                    let sy = Math.sin(angle) * 85;
+                    ctx.fillStyle = "#fbbf24";
+                    ctx.shadowColor = "#f59e0b";
+                    ctx.shadowBlur = 30;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, 32, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    let mx = Math.cos(angle + Math.PI) * 250;
+                    let my = Math.sin(angle + Math.PI) * 85;
+                    ctx.fillStyle = "#e2e8f0";
+                    ctx.shadowColor = "#94a3b8";
+                    ctx.shadowBlur = 15;
+                    ctx.beginPath();
+                    ctx.arc(mx, my, 18, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                    break;
+
+                case 3:
+                    ctx.fillStyle = "#090d16";
+                    ctx.fillRect(0, 0, width, height);
+
+                    let tGrad = ctx.createRadialGradient(width/2, height*0.4, 10, width/2, height*0.4, 280);
+                    tGrad.addColorStop(0, 'rgba(253, 230, 138, 0.5)');
+                    tGrad.addColorStop(1, 'transparent');
+                    ctx.fillStyle = tGrad;
+                    ctx.beginPath();
+                    ctx.arc(width/2, height*0.4, 280, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    for(let i = -2; i <= 2; i++) {
+                        drawHumanoid(width/2 + i * 75, height * 0.45, 1.2, "stand", "#fef08a");
+                    }
+
+                    ctx.font = "italic 26px 'Cinzel', serif";
+                    ctx.fillStyle = "#fef08a";
+                    ctx.textAlign = "center";
+                    ctx.fillText("And on the seventh day He rested", width/2, height * 0.75);
+                    break;
+
+                case 4:
+                    ctx.fillStyle = "#064e3b";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.strokeStyle = "#84cc16";
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    for(let y = 100; y < 280; y += 10) {
+                        ctx.lineTo(width * 0.5 + Math.sin(y*0.05 + t*3) * 15, y);
+                    }
+                    ctx.stroke();
+
+                    let offset = p * 140;
+                    drawHumanoid(width * 0.3 + offset, height * 0.75, 1, "run", "#d1d5db");
+                    drawHumanoid(width * 0.36 + offset, height * 0.77, 0.95, "run", "#cbd5e1");
+                    break;
+
+                case 5:
+                    ctx.fillStyle = "#78350f";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#ef4444";
+                    ctx.beginPath();
+                    ctx.arc(width * 0.3, height * 0.65, 16, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = "#334155";
+                    ctx.fillRect(width * 0.68, height * 0.65, 32, 22);
+
+                    drawHumanoid(width * 0.48, height * 0.68, 1.1, "strike", "#f87171");
+                    drawHumanoid(width * 0.54, height * 0.72, 1, "shout", "#94a3b8");
+                    break;
+
+                case 6:
+                    ctx.fillStyle = "#1e1b4b";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#451a03";
+                    ctx.beginPath();
+                    ctx.moveTo(width * 0.3, height * 0.7);
+                    ctx.lineTo(width * 0.85, height * 0.7);
+                    ctx.lineTo(width * 0.75, height * 0.38);
+                    ctx.lineTo(width * 0.4, height * 0.38);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    ctx.strokeStyle = "#78350f";
+                    ctx.lineWidth = 8;
+                    ctx.beginPath();
+                    ctx.moveTo(width * 0.1, height * 0.85);
+                    ctx.lineTo(width * 0.42, height * 0.62);
+                    ctx.stroke();
+
+                    drawHumanoid(width * 0.46, height * 0.58, 1.1, "stand", "#f59e0b");
+                    break;
+
+                case 7:
+                    ctx.fillStyle = "#020617";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#0f172a";
+                    ctx.beginPath();
+                    ctx.moveTo(0, height);
+                    for(let x=0; x<=width; x+=20) {
+                        ctx.lineTo(x, height * 0.62 + Math.sin(x*0.02 + t*5)*28);
+                    }
+                    ctx.lineTo(width, height);
+                    ctx.fill();
+
+                    ctx.save();
+                    ctx.translate(width/2, height*0.60 + Math.sin(t*3)*18);
+                    ctx.rotate(Math.sin(t*2)*0.08);
+                    ctx.fillStyle = "#291d09";
+                    ctx.fillRect(-85, -30, 170, 50);
+                    ctx.restore();
+
+                    ctx.strokeStyle = "rgba(148, 163, 184, 0.7)";
+                    ctx.lineWidth = 1.5;
+                    for(let i=0; i<120; i++) {
+                        let rx = (i * 37 + t * 600) % width;
+                        let ry = (i * 53 + t * 900) % height;
+                        ctx.beginPath();
+                        ctx.moveTo(rx, ry);
+                        ctx.lineTo(rx - 12, ry + 32);
+                        ctx.stroke();
+                    }
+                    break;
+
+                case 8:
+                    ctx.fillStyle = "#0f172a";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#78350f";
+                    let bWidth = 250;
+                    for(let tier=0; tier<5; tier++) {
+                        ctx.fillRect(width/2 - bWidth/2, height * 0.75 - tier * 45, bWidth, 45);
+                        bWidth -= 36;
+                    }
+
+                    if (p > 0.3) {
+                        ctx.strokeStyle = "#fef08a";
+                        ctx.lineWidth = 10;
+                        ctx.shadowColor = "#f59e0b";
+                        ctx.shadowBlur = 30;
+                        ctx.beginPath();
+                        ctx.moveTo(width/2, 0);
+                        ctx.lineTo(width/2, height * 0.45);
+                        ctx.stroke();
+                    }
+
+                    for(let i=0; i<6; i++) {
+                        drawHumanoid(width * 0.18 + i * 110 + p * 40, height * 0.8, 0.9, "run", "#e2e8f0");
+                    }
+                    break;
+
+                case 9:
+                    ctx.fillStyle = "#020617";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#f59e0b";
+                    ctx.shadowColor = "#f59e0b";
+                    ctx.shadowBlur = 40;
+                    ctx.fillRect(width * 0.48, height * 0.4, 75, 140);
+
+                    drawHumanoid(width * 0.45, height * 0.62, 1.25, "shout", "#ffffff");
+
+                    for(let i=0; i<5; i++) {
+                        drawHumanoid(width * 0.15 + i * 55, height * 0.65, 1, "strike", "#ef4444");
+                    }
+                    break;
+
+                case 10:
+                    ctx.fillStyle = "#450a0a";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#f97316";
+                    for(let i=0; i<18; i++) {
+                        let mx = (i * 90 + t * 250) % width;
+                        let my = (i * 60 + t * 350) % height;
+                        ctx.beginPath();
+                        ctx.arc(mx, my, 8, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                    drawHumanoid(width * 0.22, height * 0.72, 1, "run", "#f1f5f9");
+
+                    ctx.fillStyle = "#ffffff";
+                    ctx.shadowColor = "#ffffff";
+                    ctx.shadowBlur = 25;
+                    ctx.fillRect(width * 0.65, height * 0.54, 18, 92);
+                    break;
+
+                case 11:
+                    ctx.fillStyle = "#78350f";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#1c1917";
+                    ctx.beginPath();
+                    ctx.arc(width * 0.3, height * 0.75, 75, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    drawHumanoid(width * 0.3, height * 0.78, 0.8, "shout", "#f59e0b");
+
+                    ctx.fillStyle = "#451a03";
+                    ctx.fillRect(width * 0.62, height * 0.6, 75, 38);
+                    drawHumanoid(width * 0.72, height * 0.62, 1, "stand", "#e2e8f0");
+                    break;
+
+                case 12:
+                    ctx.fillStyle = "#1e1b4b";
+                    ctx.fillRect(0, 0, width, height);
+
+                    ctx.fillStyle = "#fef08a";
+                    ctx.fillRect(width * 0.15, height * 0.2, 42, height * 0.6);
+                    ctx.fillRect(width * 0.8, height * 0.2, 42, height * 0.6);
+
+                    ctx.fillStyle = "#f59e0b";
+                    ctx.shadowColor = "#f59e0b";
+                    ctx.shadowBlur = 25;
+                    ctx.fillRect(width * 0.45, height * 0.5, 95, 85);
+
+                    drawHumanoid(width * 0.48, height * 0.52, 1.2, "stand", "#ffffff");
+                    drawHumanoid(width * 0.62, height * 0.58, 1.1, "stand", "#fbbf24");
+                    break;
+            }
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+            particles.forEach(p => {
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+
+        let lastTime = 0;
+        function animate(time) {
+            const dt = (time - lastTime) * 0.001;
+            lastTime = time;
+
+            currentScroll += (targetScroll - currentScroll) * 0.06;
+
+            const globalProgress = Math.max(0, Math.min(1, currentScroll / (maxScroll || 1)));
+            const scaledProgress = globalProgress * SCENE_DATA.length;
+            let sceneIdx = Math.floor(scaledProgress);
+            if (sceneIdx >= SCENE_DATA.length) sceneIdx = SCENE_DATA.length - 1;
+            const localProgress = scaledProgress - sceneIdx;
+
+            currentSceneIndex = sceneIdx;
+
+            // Trigger narration and audio updates ONLY when scene index changes
+            if (sceneIdx !== lastTriggeredScene) {
+                lastTriggeredScene = sceneIdx;
+                if (isVoiceEnabled) {
+                    speakSceneNarration(sceneIdx);
+                }
+                updateAudioPitch(sceneIdx);
+            }
+
+            renderScene(sceneIdx, localProgress, time * 0.001);
+
+            const curr = SCENE_DATA[sceneIdx];
+            document.getElementById('sceneBadge').textContent = `ACT I • SCENE ${curr.id < 10 ? '0' + curr.id : curr.id}`;
+            document.getElementById('sceneScripture').textContent = curr.scripture;
+            document.getElementById('sceneTitle').textContent = curr.title;
+            document.getElementById('sceneDesc').textContent = curr.desc;
+
+            const percent = Math.round(globalProgress * 100);
+            document.getElementById('progressBar').style.width = `${percent}%`;
+            document.getElementById('progressVal').textContent = `${percent}%`;
+
+            SCENE_DATA.forEach((_, idx) => {
+                const dot = document.getElementById(`dot-${idx}`);
+                if (dot) {
+                    if (idx === sceneIdx) {
+                        dot.className = "w-4 h-2 rounded-full bg-amber-400 transition-all duration-300";
+                    } else {
+                        dot.className = "w-2 h-2 rounded-full bg-slate-700 transition-all duration-300 hover:scale-125 interactive-btn";
+                    }
+                }
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        window.onload = function() {
+            updateMaxScroll();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>
